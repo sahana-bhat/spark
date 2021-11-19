@@ -71,7 +71,14 @@ trait CreateHiveTableAsSelectBase extends DataWritingCommand {
 
       try {
         // Read back the metadata of the table which was created just now.
-        val createdTableMeta = catalog.getTableMetadata(tableDesc.identifier)
+        var createdTableMeta = {
+        if (tableDesc.properties("temporary") != "true") {
+           catalog.getTableMetadata(tableDesc.identifier)
+        } else {
+          val createdTableView = catalog.getRawTempView(tableDesc.identifier.table)
+          createdTableView.get.tableMeta
+        }
+      }
         val command = getWritingCommand(catalog, createdTableMeta, tableExists = false)
         command.run(sparkSession, child)
         DataWritingCommand.propogateMetrics(sparkSession.sparkContext, command, metrics)

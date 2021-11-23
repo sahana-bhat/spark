@@ -18,7 +18,6 @@
 package org.apache.spark.sql.execution.datasources
 
 import java.util.Locale
-
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.CatalogTable

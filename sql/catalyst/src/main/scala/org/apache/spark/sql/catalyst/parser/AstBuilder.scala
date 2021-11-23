@@ -2854,6 +2854,7 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with SQLConfHelper with Logg
     (multipartIdentifier, temporary, ifNotExists, ctx.EXTERNAL != null)
   }
 
+
   /**
    * Validate a replace table statement and return the [[TableIdentifier]].
    */
@@ -3381,18 +3382,20 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with SQLConfHelper with Logg
 
     val columns = Option(ctx.colTypeList()).map(visitColTypeList).getOrElse(Nil)
     val provider = Option(ctx.tableProvider).map(_.multipartIdentifier.getText)
-    val (partTransforms, partCols, bucketSpec, properties, options, location, comment, serdeInfo) =
+    var (partTransforms, partCols, bucketSpec, properties, options, location, comment, serdeInfo) =
       visitCreateTableClauses(ctx.createTableClauses())
+    properties += ("temporary" -> temp.toString)
+    //properties += "plan" -> plan
 
     if (provider.isDefined && serdeInfo.isDefined) {
       operationNotAllowed(s"CREATE TABLE ... USING ... ${serdeInfo.get.describe}", ctx)
     }
 
-    if (temp) {
-      val asSelect = if (ctx.query == null) "" else " AS ..."
-      operationNotAllowed(
-        s"CREATE TEMPORARY TABLE ...$asSelect, use CREATE TEMPORARY VIEW instead", ctx)
-    }
+//    if (temp) {
+//      val asSelect = if (ctx.query == null) "" else " AS ..."
+//      operationNotAllowed(
+//        s"CREATE TEMPORARY TABLE ...$asSelect, use CREATE TEMPORARY VIEW instead", ctx)
+//    }
 
     val partitioning = partitionExpressions(partTransforms, partCols, ctx)
 

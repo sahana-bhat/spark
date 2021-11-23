@@ -373,7 +373,13 @@ class SessionCatalog(
     } else if (validateLocation) {
       validateTableLocation(newTableDefinition)
     }
-    externalCatalog.createTable(newTableDefinition, ignoreIfExists)
+    if (tableDefinition.properties("temporary") != "true") {
+      externalCatalog.createTable(newTableDefinition, ignoreIfExists)
+    } else {
+      val tempViewFromTable = TemporaryViewRelation(newTableDefinition)
+      // tempViews.put(formatTableName(tableDefinition.identifier.table), tempViewFromTable)
+      createTempView(formatTableName(tableDefinition.identifier.table), tempViewFromTable, true)
+    }
   }
 
   def validateTableLocation(table: CatalogTable): Unit = {

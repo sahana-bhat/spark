@@ -110,10 +110,11 @@ case class InsertIntoHiveTable(
     }
 
     // un-cache this table.
-    CommandUtils.uncacheTableOrView(sparkSession, table.identifier.quotedString)
-    sparkSession.sessionState.catalog.refreshTable(table.identifier)
-
-    CommandUtils.updateTableStats(sparkSession, table)
+    if (table.properties.get("temporary").get != "true") {
+      CommandUtils.uncacheTableOrView(sparkSession, table.identifier.quotedString)
+      sparkSession.sessionState.catalog.refreshTable(table.identifier)
+      CommandUtils.updateTableStats(sparkSession, table)
+    }
 
     // It would be nice to just return the childRdd unchanged so insert operations could be chained,
     // however for now we return an empty list to simplify compatibility checks with hive, which
@@ -331,12 +332,14 @@ case class InsertIntoHiveTable(
         }
       }
     } else {
-      externalCatalog.loadTable(
-        table.database,
-        table.identifier.table,
-        tmpLocation.toString, // TODO: URI
-        overwrite,
-        isSrcLocal = false)
+      if (table.properties.get("temporary").get != "true") {
+        externalCatalog.loadTable(
+          table.database,
+          table.identifier.table,
+          tmpLocation.toString, // TODO: URI
+          overwrite,
+          isSrcLocal = false)
+      }
     }
   }
 

@@ -18,17 +18,18 @@
 package org.apache.spark.sql.hive.execution
 
 import scala.util.control.NonFatal
-
 import org.apache.spark.sql.{Row, SaveMode, SparkSession}
-import org.apache.spark.sql.catalyst.catalog.{CatalogTable, SessionCatalog}
+import org.apache.spark.sql.catalyst.catalog.{CatalogTable, CatalogUtils, SessionCatalog}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.util.CharVarcharUtils
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.execution.SparkPlan
-import org.apache.spark.sql.execution.command.{DataWritingCommand, DDLUtils}
+import org.apache.spark.sql.execution.command.{DDLUtils, DataWritingCommand}
 import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, InsertIntoHadoopFsRelationCommand, LogicalRelation}
 import org.apache.spark.sql.hive.HiveSessionCatalog
 import org.apache.spark.util.Utils
+
+import org.apache.hadoop.fs.Path
 
 trait CreateHiveTableAsSelectBase extends DataWritingCommand {
   val tableDesc: CatalogTable
@@ -75,11 +76,18 @@ trait CreateHiveTableAsSelectBase extends DataWritingCommand {
         if (tableDesc.properties("temporary") != "true") {
            catalog.getTableMetadata(tableDesc.identifier)
         } else {
+
           val createdTableView = catalog.getRawTempView(tableDesc.identifier.table)
           createdTableView.get.tableMeta
         }
       }
-        val command = getWritingCommand(catalog, createdTableMeta, tableExists = false)
+        val dbLocation = catalog.getDatabaseMetadata(tableDesc.database).locationUri
+        val tablePath = new Path(new Path(dbLocation), tableDesc.identifier.table).toString
+        val createdTableMetaCopy = {
+          createdTableMeta.withNewStorage(locationUri = Some(CatalogUtils.stringToURI(tablePath)))
+        }
+        // createdTableMeta.storage.locationUri. = CatalogUtils.stringToURI(tablePath)
+        val command = getWritingCommand(catalog, createdTableMetaCopy, tableExists = false)
         command.run(sparkSession, child)
         DataWritingCommand.propogateMetrics(sparkSession.sparkContext, command, metrics)
       } catch {
